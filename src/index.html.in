@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TTYD</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: __BG__;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    #toolbar {
+      background: #2d2d2d;
+      border-bottom: 1px solid #404040;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      user-select: none;
+    }
+
+    #toolbar label { color: #888; font-size: 12px; }
+
+    #toolbar button {
+      background: #404040;
+      border: 1px solid #555;
+      color: #ccc;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    #toolbar button:hover { background: #505050; }
+
+    #toolbar .sep {
+      width: 1px;
+      height: 20px;
+      background: #404040;
+    }
+
+    #toolbar .color-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    #toolbar input[type="color"] {
+      width: 24px;
+      height: 24px;
+      border: 1px solid #555;
+      border-radius: 4px;
+      background: none;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    #toolbar input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+    #toolbar input[type="color"]::-webkit-color-swatch { border: none; border-radius: 2px; }
+
+    #font-size {
+      background: #404040;
+      border: 1px solid #555;
+      color: #ccc;
+      padding: 4px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    #font-select {
+      background: #404040;
+      border: 1px solid #555;
+      color: #ccc;
+      padding: 4px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    #terminal {
+      height: calc(100vh - 37px);
+      overflow: hidden;
+    }
+
+    #overlay {
+      display: none;
+      position: fixed;
+      top: 37px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #overlay.active { display: flex; }
+
+    #overlay .badge {
+      border-radius: 15px;
+      font-size: xx-large;
+      opacity: 0.75;
+      padding: 0.2em 0.5em;
+      background: #f0f0f0;
+      color: #101010;
+      user-select: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="toolbar">
+    <label>Font</label>
+    <select id="font-select" name="font" autocomplete="off" onchange="changeFont(this.value)">
+      <option value="monospace">System Default</option>
+      <option value="Consolas, Menlo, DejaVu Sans Mono, Courier New, monospace">Consolas</option>
+      <option value="Menlo, Consolas, DejaVu Sans Mono, Courier New, monospace">Menlo</option>
+      <option value="DejaVu Sans Mono, Consolas, Menlo, Courier New, monospace">DejaVu Sans Mono</option>
+      <option value="Courier New, Consolas, Menlo, DejaVu Sans Mono, monospace">Courier New</option>
+    </select>
+    <div class="sep"></div>
+    <label>Size</label>
+    <input type="number" id="font-size" min="8" max="30" step="1" value="__FONT_SIZE__" oninput="previewFontSize(this.value)" onchange="saveFontSize(this.value)" style="width:50px" required>
+    <div class="sep"></div>
+    <div class="color-group">
+      <label>FG</label>
+      <input type="color" id="fg-color" value="__FG__" oninput="previewColor('fg', this.value)" onchange="saveColor('fg', this.value)">
+    </div>
+    <div class="color-group">
+      <label>BG</label>
+      <input type="color" id="bg-color" value="__BG__" oninput="previewColor('bg', this.value)" onchange="saveColor('bg', this.value)">
+    </div>
+  </div>
+
+  <div id="terminal"></div>
+
+  <div id="overlay" onclick="reconnect()">
+    <div class="badge">Press ⏎ to Reconnect</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+  <script>
+    // --- Settings (replaced by gen-html.sh at startup) ---
+    let fontSize = __FONT_SIZE__;
+    let fgColor = '__FG__';
+    let bgColor = '__BG__';
+    let fontFamily = '__FONT_FAMILY__';
+
+    // --- ANSI color defaults ---
+    const defaultAnsi = {
+      black: '#000000',
+      red: '#cd3131',
+      green: '#00bc00',
+      yellow: '#949800',
+      blue: '#0451a5',
+      magenta: '#bc05bc',
+      cyan: '#0598bc',
+      white: '#555555',
+      brightBlack: '#666666',
+      brightRed: '#cd3131',
+      brightGreen: '#00bc00',
+      brightYellow: '#949800',
+      brightBlue: '#0451a5',
+      brightMagenta: '#bc05bc',
+      brightCyan: '#0598bc',
+      brightWhite: '#a5a5a5'
+    };
+
+    function buildTheme() {
+      return {
+        foreground: fgColor,
+        background: bgColor,
+        cursor: fgColor,
+        selectionBackground: '#264f78',
+        ...defaultAnsi
+      };
+    }
+
+    // --- Terminal setup ---
+    const term = new Terminal({
+      fontSize,
+      fontFamily,
+      theme: buildTheme(),
+      cursorBlink: true,
+      allowProposedApi: true
+    });
+
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(document.getElementById('terminal'));
+    fitAddon.fit();
+
+    // --- Sync toolbar with current settings ---
+    document.getElementById('fg-color').value = fgColor;
+    document.getElementById('bg-color').value = bgColor;
+    document.getElementById('font-size').value = fontSize;
+
+    // Auto-detect best available font
+    function detectBestFont() {
+      const testFonts = [
+        { name: 'Consolas, Menlo, DejaVu Sans Mono, Courier New, monospace', label: 'Consolas' },
+        { name: 'Menlo, Consolas, DejaVu Sans Mono, Courier New, monospace', label: 'Menlo' },
+        { name: 'DejaVu Sans Mono, Consolas, Menlo, Courier New, monospace', label: 'DejaVu Sans Mono' },
+        { name: 'Liberation Mono, DejaVu Sans Mono, Consolas, Menlo, Courier New, monospace', label: 'Liberation Mono' },
+        { name: 'Courier New, Consolas, Menlo, DejaVu Sans Mono, monospace', label: 'Courier New' },
+        { name: 'monospace', label: 'System Default' }
+      ];
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const testStr = 'iiiiiiiiiiiiiiii';
+      const refWidth = ctx.measureText(testStr).font;
+      for (const font of testFonts) {
+        ctx.font = '12px ' + font.name;
+        if (ctx.measureText(testStr).font !== refWidth) {
+          return font;
+        }
+      }
+      return testFonts[testFonts.length - 1];
+    }
+
+    if (!fontFamily || fontFamily === '__FONT_FAMILY__') {
+      const detected = detectBestFont();
+      fontFamily = detected.name;
+      term.options.fontFamily = fontFamily;
+    }
+    document.getElementById('font-select').value = fontFamily;
+
+    // --- Toolbar actions ---
+    function previewFontSize(size) {
+      fontSize = parseInt(size) || 14;
+      term.options.fontSize = fontSize;
+      fitAddon.fit();
+    }
+
+    function saveFontSize(size) {
+      previewFontSize(size);
+      saveToServer();
+    }
+
+    function previewColor(type, value) {
+      if (type === 'fg') fgColor = value;
+      else bgColor = value;
+      term.options.theme = buildTheme();
+    }
+
+    function saveColor(type, value) {
+      previewColor(type, value);
+      saveToServer();
+    }
+
+    function changeFont(font) {
+      fontFamily = font;
+      term.options.fontFamily = font;
+      fitAddon.fit();
+      saveToServer();
+    }
+
+    // --- Server-side persistence ---
+    let saveTimer = null;
+    function saveToServer() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        const settings = { fg: fgColor, bg: bgColor, fontSize: fontSize, fontFamily: fontFamily };
+        const json = JSON.stringify(settings);
+        const cmd = "printf '%s\\n' '"
+          + json.replace(/'/g, "'\\''")
+          + "' > /usr/local/AppCentral/ttyd/settings.json"
+          + " && /usr/local/AppCentral/ttyd/gen-html.sh\r";
+        sendData(cmd);
+      }, 300);
+    }
+
+    // --- Window resize ---
+    window.addEventListener('resize', () => fitAddon.fit());
+
+    // --- Reconnect overlay ---
+    let reconnecting = false;
+    let reconnectKeyDispose = null;
+    let reconnectTimer = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 3;
+
+    function showOverlay(msg) {
+      document.getElementById('overlay').querySelector('.badge').textContent = msg;
+      document.getElementById('overlay').classList.add('active');
+    }
+
+    function hideOverlay() {
+      document.getElementById('overlay').classList.remove('active');
+    }
+
+    function reconnect() {
+      if (!reconnecting) return;
+      reconnecting = false;
+      reconnectAttempts = 0;
+      if (reconnectKeyDispose) {
+        reconnectKeyDispose.dispose();
+        reconnectKeyDispose = null;
+      }
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      hideOverlay();
+      term.clear();
+      connect();
+    }
+
+    // --- WebSocket protocol ---
+    let ws = null;
+    let inputDispose = null;
+    let resizeDispose = null;
+    let isReconnect = false;
+
+    function sendData(data) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      if (typeof data === 'string') {
+        const buf = new TextEncoder().encode(data);
+        const payload = new Uint8Array(1 + buf.length);
+        payload[0] = 0x30;
+        payload.set(buf, 1);
+        ws.send(payload);
+      } else {
+        const payload = new Uint8Array(data.length + 1);
+        payload[0] = 0x30;
+        payload.set(data, 1);
+        ws.send(payload);
+      }
+    }
+
+    async function connect() {
+      const loc = window.location;
+      const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+      const httpProto = loc.protocol;
+      const path = loc.pathname.replace(/[/]+$/, '');
+
+      let token = '';
+      try {
+        const resp = await fetch(httpProto + '//' + loc.host + path + '/token');
+        const json = await resp.json();
+        token = json.token || '';
+      } catch (e) {}
+
+      ws = new WebSocket(proto + '//' + loc.host + path + '/ws', ['tty']);
+      ws.binaryType = 'arraybuffer';
+
+      ws.onopen = () => {
+        const wasReconnect = isReconnect;
+        isReconnect = false;
+        reconnecting = false;
+        hideOverlay();
+
+        if (reconnectKeyDispose) {
+          reconnectKeyDispose.dispose();
+          reconnectKeyDispose = null;
+        }
+        if (reconnectTimer) {
+          clearTimeout(reconnectTimer);
+          reconnectTimer = null;
+        }
+
+        if (inputDispose) inputDispose.dispose();
+        if (resizeDispose) resizeDispose.dispose();
+
+        inputDispose = term.onData(data => {
+          sendData(data);
+        });
+
+        resizeDispose = term.onResize(({ cols, rows }) => {
+          const body = JSON.stringify({ columns: cols, rows: rows });
+          const encoded = new TextEncoder().encode(body);
+          const payload = new Uint8Array(1 + encoded.length);
+          payload[0] = 0x31;
+          payload.set(encoded, 1);
+          ws.send(payload);
+        });
+
+        ws.onmessage = event => {
+          if (typeof event.data === 'string') {
+            term.write(event.data);
+          } else {
+            const data = new Uint8Array(event.data);
+            const cmd = String.fromCharCode(data[0]);
+            const payload = data.slice(1);
+            switch (cmd) {
+              case '0':
+                term.write(payload);
+                break;
+              case '1':
+                document.title = new TextDecoder().decode(payload);
+                break;
+              case '2':
+                try {
+                  const prefs = JSON.parse(new TextDecoder().decode(payload));
+                  if (prefs.fontSize) {
+                    term.options.fontSize = prefs.fontSize;
+                    fitAddon.fit();
+                  }
+                  if (prefs.fontFamily) term.options.fontFamily = prefs.fontFamily;
+                } catch (e) {}
+                break;
+            }
+          }
+        };
+
+        const msg = JSON.stringify({ AuthToken: token, columns: term.cols, rows: term.rows });
+        ws.send(new TextEncoder().encode(msg));
+
+        if (wasReconnect) {
+          showOverlay('Reconnected');
+          setTimeout(hideOverlay, 300);
+        }
+
+        term.focus();
+      };
+
+      ws.onclose = (e) => {
+        if (inputDispose) { inputDispose.dispose(); inputDispose = null; }
+        if (resizeDispose) { resizeDispose.dispose(); resizeDispose = null; }
+
+        // Normal close (code 1000): show "Press ⏎ to Reconnect"
+        if (e.code === 1000) {
+          reconnecting = true;
+          showOverlay('Press ⏎ to Reconnect');
+          reconnectKeyDispose = term.onKey(({ domEvent }) => {
+            if (domEvent.key === 'Enter') reconnect();
+          });
+          return;
+        }
+
+        // Abnormal close: auto-reconnect, show "Reconnecting..."
+        reconnectAttempts++;
+        if (reconnectAttempts > maxReconnectAttempts) {
+          reconnecting = false;
+          showOverlay('Connection lost');
+          return;
+        }
+        reconnecting = true;
+        isReconnect = true;
+        showOverlay('Reconnecting...');
+        reconnectTimer = setTimeout(() => {
+          connect().catch(() => {});
+        }, 1000);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+
+      // If WebSocket fails to open (server gone), show "Connection lost"
+      return new Promise((resolve) => {
+        const checkOpen = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            clearInterval(checkOpen);
+            resolve();
+          } else if (ws.readyState === WebSocket.CLOSED) {
+            clearInterval(checkOpen);
+            isReconnect = false;
+            reconnecting = false;
+            showOverlay('Connection lost');
+            resolve();
+          }
+        }, 100);
+      });
+    }
+
+    connect();
+  </script>
+</body>
+</html>

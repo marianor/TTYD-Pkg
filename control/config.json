@@ -1,0 +1,27 @@
+{
+  "general": {
+    "package": "ttyd",
+    "name": "TTYD",
+    "version": "1.0.0",
+    "architecture": "x86-64",
+    "firmware": "5.0.0",
+    "developer": "tsl0922",
+    "maintainer": "Mariano Omar Rodriguez",
+    "website": "https://github.com/tsl0922/ttyd"
+  },
+  "adm-desktop": {
+    "app": {
+      "type": "custom",
+      "protocol": "https",
+      "port": 7681,
+      "url": "/"
+    },
+    "privilege": {
+      "accessible": "administrators",
+      "customizable": true
+    }
+  },
+  "register": {
+    "port": [7681]
+  }
+}

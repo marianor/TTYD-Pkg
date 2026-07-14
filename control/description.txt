@@ -1,0 +1,12 @@
+TTYD - Web Terminal for Asustor NAS
+
+Share your terminal over the web with TLS encryption.
+Runs as a standalone APKG package with zero dependencies.
+
+Features:
+- Native TLS using NAS certificates
+- PAM authentication via system login prompt
+- WebSocket support for real-time terminal
+- Single session mode (one client at a time)
+- Cross-origin protection
+- Static binary (no dependencies)
