@@ -1,0 +1,10 @@
+TTYD-Pkg Changelog
+
+v1.0.0 (2026-07-16)
+- Initial release
+- Native TLS using NAS certificates
+- PAM authentication via system login
+- Single session mode
+- Cross-origin protection
+- Built-in web client with WebGL, Zmodem, Sixel, clipboard support
+- Configurable via -t flags (theme, fontSize, fontFamily)

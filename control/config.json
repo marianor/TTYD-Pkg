@@ -6,8 +6,10 @@
     "architecture": "x86-64",
     "firmware": "5.0.0",
     "developer": "tsl0922",
-    "maintainer": "Mariano Omar Rodriguez",
-    "website": "https://github.com/tsl0922/ttyd"
+    "maintainer": "marianor",
+    "email": "marianoor@gmail.com",
+    "website": "https://github.com/marianor/TTYD-Pkg",
+    "default-lang": "enu"
   },
   "adm-desktop": {
     "app": {
