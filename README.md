@@ -24,9 +24,10 @@ TTYD-Pkg/
 │   ├── description.txt    # App Central description
 │   ├── changelog.txt      # Package changelog
 │   ├── license.txt        # Combined licenses
-│   └── icon.png           # 90x90 icon
+│   └── icon.png           # 256x256 icon
 ├── assets/                 # Project assets
-│   └── terminal_web_icon_256x256.png
+│   ├── terminal_web_icon_256x256.png
+│   └── screenshot.png
 ├── build/                  # Build artifacts (gitignored)
 ├── build.sh               # Build script
 └── README.md             # This file
