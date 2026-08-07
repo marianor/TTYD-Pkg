@@ -1,5 +1,9 @@
 TTYD-Pkg Changelog
 
+v1.0.1 (2026-08-06)
+- Disable busybox login 60s prompt timeout (LOGIN_TIMEOUT=0) to prevent
+  spurious session restarts when the tab is left idle at the login prompt
+
 v1.0.0 (2026-07-16)
 - Initial release
 - Native TLS using NAS certificates

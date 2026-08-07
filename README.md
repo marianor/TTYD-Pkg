@@ -124,7 +124,7 @@ terminal web shell SSH remote console ttyd
 1. Register at [developer.asustor.com](https://developer.asustor.com)
 2. Login to Developer Corner
 3. Go to [Upload App](https://developer.asustor.com/app/upload)
-4. Upload `build/output/ttyd_1.0.0_x86-64.apk`
+4. Upload `build/output/ttyd_1.0.1_x86-64.apk`
 5. Fill in app details (name, description, categories)
 6. Upload `assets/terminal_web_icon_256x256.png` as the App Central icon
 7. Submit for Asustor review
@@ -144,7 +144,7 @@ ttyd itself is also MIT licensed - see [ttyd/LICENSE](https://github.com/tsl0922
 
 ## Version
 
-Current version: **1.0.0**
+Current version: **1.0.1**
 
 - ttyd: v1.7.7-40e79c7
 - APKG format: 2.0

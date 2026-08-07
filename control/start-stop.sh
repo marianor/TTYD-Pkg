@@ -11,6 +11,8 @@ SETTINGS_FILE="${PKG_DIR}/etc/settings.conf"
 CERT_FILE="/usr/builtin/etc/certificate/ssl.crt"
 KEY_FILE="/usr/builtin/etc/certificate/ssl.key"
 
+export LOGIN_TIMEOUT=0
+
 start() {
     if [ -f "$PID_FILE" ] && kill -0 $(cat "$PID_FILE") 2>/dev/null; then
         echo "${PACKAGE_NAME} is already running."
