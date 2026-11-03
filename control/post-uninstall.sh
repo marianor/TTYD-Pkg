@@ -4,7 +4,14 @@
 
 PACKAGE_NAME="ttyd"
 PID_FILE="/var/run/${PACKAGE_NAME}.pid"
+WATCH_PID_FILE="/var/run/${PACKAGE_NAME}-watch.pid"
 LOG_FILE="${PKG_DIR}/var/${PACKAGE_NAME}.log"
+
+# Kill the certificate watcher first so it cannot restart ttyd
+if [ -f "$WATCH_PID_FILE" ]; then
+    kill $(cat "$WATCH_PID_FILE") 2>/dev/null
+    rm -f "$WATCH_PID_FILE"
+fi
 
 # Kill ttyd process by PID file
 if [ -f "$PID_FILE" ]; then

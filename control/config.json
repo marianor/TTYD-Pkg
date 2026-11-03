@@ -2,7 +2,7 @@
   "general": {
     "package": "ttyd",
     "name": "TTYD",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "architecture": "x86-64",
     "firmware": "5.0.0",
     "developer": "tsl0922",

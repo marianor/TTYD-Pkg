@@ -1,5 +1,11 @@
 TTYD-Pkg Changelog
 
+v1.0.2 (2026-11-03)
+- Fix expired certificate being served after the NAS renews it: ttyd only
+  reads its TLS certificate at startup, so a background watcher now restarts
+  ttyd when the NAS certificate files change, waiting (up to 7 days) for open
+  sessions to end first
+
 v1.0.1 (2026-08-06)
 - Disable busybox login 60s prompt timeout (LOGIN_TIMEOUT=0) to prevent
   spurious session restarts when the tab is left idle at the login prompt
